@@ -1,6 +1,7 @@
 package hooks
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,8 +26,9 @@ func (h AppHook) BeforeCompile(compiler *libbuildpack.Stager) error {
 		if err := os.Chmod(path, 0755); err != nil {
 			return err
 		}
-		cmd := exec.Command("/usr/bin/bash", path)
+		cmd := exec.Command(path)
 		cmd.Dir = compiler.BuildDir()
+		compiler.Logger().BeginStep(fmt.Sprintf("Its %v", cmd))
 		output, err := cmd.Output()
 		if err != nil {
 			return err
