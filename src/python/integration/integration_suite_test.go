@@ -122,7 +122,8 @@ func AssertUsesProxyDuringStagingIfPresent(fixtureName string) {
 			Expect(err).To(BeNil())
 			defer os.Remove(bpFile)
 
-			traffic, err := cutlass.InternetTraffic(
+			// TODO confirm push
+			traffic, _, err := cutlass.InternetTraffic(
 				bpDir,
 				filepath.Join("fixtures", fixtureName),
 				bpFile,
@@ -141,7 +142,7 @@ func AssertUsesProxyDuringStagingIfPresent(fixtureName string) {
 }
 
 func AssertNoInternetTraffic(fixtureName string) {
-	It("has no traffic", func() {
+	FIt("has no traffic", func() {
 		if !cutlass.Cached {
 			Skip("Running uncached tests")
 		}
@@ -152,12 +153,13 @@ func AssertNoInternetTraffic(fixtureName string) {
 		Expect(err).To(BeNil())
 		defer os.Remove(bpFile)
 
-		traffic, err := cutlass.InternetTraffic(
+		traffic, output, err := cutlass.InternetTraffic(
 			bpDir,
 			filepath.Join("fixtures", fixtureName),
 			bpFile,
 			[]string{},
 		)
+		Expect(output).To(BeTrue())
 		Expect(err).To(BeNil())
 		Expect(traffic).To(BeEmpty())
 	})
