@@ -352,18 +352,20 @@ func (s *Supplier) InstallPipEnv() error {
 		return nil
 	}
 
-	vendored, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "vendor"))
-	if err != nil {
-		return fmt.Errorf("could not check vendor existence: %v", err)
-	}
-
 	hasLockFile, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "Pipfile.lock"))
 	if err != nil {
 		return fmt.Errorf("could not check Pipfile.lock existence: %v", err)
+	} else if hasLockFile {
+		s.Log.Info("Generating 'requirements.txt' from Pipfile.lock")
+		requirementsContents, err := pipfileToRequirements(filepath.Join(s.Stager.BuildDir(), "Pipfile.lock"))
+		if err != nil {
+			return fmt.Errorf("failed to write `requirement.txt` from Pipfile.lock: %s", err.Error())
+		}
+
+		return s.writeTempRequirementsTxt(requirementsContents)
 	}
 
 	s.Log.Info("Installing pipenv")
-
 	if err := s.Installer.InstallOnlyVersion("pipenv", filepath.Join("/tmp", "pipenv")); err != nil {
 		return err
 	}
@@ -382,54 +384,25 @@ func (s *Supplier) InstallPipEnv() error {
 	}
 	s.Stager.LinkDirectoryInDepDir(filepath.Join(s.Stager.DepDir(), "python", "bin"), "bin")
 
-	if vendored {
-		if hasLockFile {
-			s.Log.Info("Generating 'requirements.txt' from Pipfile.lock")
+	s.Log.Info("Generating 'requirements.txt' with pipenv")
+	cmd := exec.Command("pipenv", "lock", "--requirements")
+	cmd.Dir = s.Stager.BuildDir()
+	cmd.Env = append(os.Environ(), "VIRTUALENV_NEVER_DOWNLOAD=true")
+	output, err := s.Command.RunWithOutput(cmd)
+	if err != nil {
+		return err
+	}
+	outputString := string(output)
 
-			requirementsContents, err := pipfileToRequirements(filepath.Join(s.Stager.BuildDir(), "Pipfile.lock"))
-			if err != nil {
-				return fmt.Errorf("failed to write `requirement.txt` from Pipfile.lock: %s", err.Error())
-			}
-
-			return s.writeTempRequirementsTxt(requirementsContents)
-		} else {
-			s.Log.Info("Generating 'requirements.txt' with pipenv")
-
-			cmd := exec.Command("pipenv", "lock", "--requirements")
-			cmd.Dir = s.Stager.BuildDir()
-			cmd.Env = append(os.Environ(), "VIRTUALENV_NEVER_DOWNLOAD=true")
-			output, err := s.Command.RunWithOutput(cmd)
-			if err != nil {
-				return err
-			}
-			outputString := string(output)
-
-			// Remove output due to virtualenv
-			if strings.HasPrefix(outputString, "Using ") {
-				reqs := strings.SplitN(outputString, "\n", 2)
-				if len(reqs) > 0 {
-					outputString = reqs[1]
-				}
-			}
-
-			return s.writeTempRequirementsTxt(outputString)
+	// Remove output due to virtualenv
+	if strings.HasPrefix(outputString, "Using ") {
+		reqs := strings.SplitN(outputString, "\n", 2)
+		if len(reqs) > 0 {
+			outputString = reqs[1]
 		}
-	} else {
-		var cmd *exec.Cmd
-		if hasLockFile {
-			s.Log.Info("Installing with pipenv sync")
-			cmd = exec.Command("pipenv", "sync")
-		} else {
-			s.Log.Info("Installing with pipenv install")
-			cmd = exec.Command("pipenv", "install")
-		}
-		cmd.Dir = s.Stager.BuildDir()
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		return cmd.Run()
 	}
 
-	return nil
+	return s.writeTempRequirementsTxt(outputString)
 }
 
 func pipfileToRequirements(lockFilePath string) (string, error) {
