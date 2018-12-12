@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+echo "================= ENV in post_compile"
+env
+
+cp -r /app/* ${PYTHONPATH}
+ls -l ${PYTHONPATH} > /dev/null

@@ -1,0 +1,7 @@
+buildpack: https://github.com/cloudfoundry/python-buildpack.git#v1.6.21
+stack: cflinuxfs3
+env:
+  C_INCLUDE_PATH: /app/include
+  LIBRARY_PATH: /app/lib
+  LD_LIBRARY_PATH: /app/lib
+# command: python myapp.py

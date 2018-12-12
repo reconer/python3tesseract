@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+echo "================= ENV in pre_compile"
+env
+
+_LIBCOUCHBASE_VER=2.10.2
+_PROJECT_ROOT=/app
+
+# Build and install Couchbase C SDK (core library only).
+# Couchbase make code runs some Git commands, so requires making a clone.
+git clone --depth 1 --branch $_LIBCOUCHBASE_VER \
+    https://github.com/couchbase/libcouchbase.git /tmp/libcouchbase_$$
+cd /tmp/libcouchbase_$$
+
+echo "---- CONFIGURING ----"
+./configure.pl \
+    --prefix $_PROJECT_ROOT \
+    --disable-tools \
+    --disable-tests \
+    --disable-plugins \
+    --disable-couchbasemock
+
+echo "---- MAKING ----"
+make
+echo "---- INSTALLING ----"
+make install
