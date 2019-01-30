@@ -96,11 +96,6 @@ func RunPython(s *Supplier) error {
 		return err
 	}
 
-	if err := s.InstallPip(); err != nil {
-		s.Log.Error("Could not install pip: %v", err)
-		return err
-	}
-
 	if err := s.InstallPipPop(); err != nil {
 		s.Log.Error("Could not install pip pop: %v", err)
 		return err
@@ -289,6 +284,7 @@ func (s *Supplier) InstallPython() error {
 	if err := os.Setenv("PATH", fmt.Sprintf("%s:%s", filepath.Join(s.Stager.DepDir(), "bin"), os.Getenv("PATH"))); err != nil {
 		return err
 	}
+
 	if err := os.Setenv("PYTHONPATH", filepath.Join(s.Stager.DepDir())); err != nil {
 		return err
 	}
@@ -327,7 +323,7 @@ func (s *Supplier) InstallPipPop() error {
 		return err
 	}
 
-	if err := s.Command.Execute(s.Stager.BuildDir(), ioutil.Discard, ioutil.Discard, "pip", "install", "pip-pop", "--exists-action=w", "--no-index", fmt.Sprintf("--find-links=%s", tempPath)); err != nil {
+	if err := s.Command.Execute(s.Stager.BuildDir(), ioutil.Discard, ioutil.Discard,"python", "-m", "pip", "install", "pip-pop", "--exists-action=w", "--no-index", fmt.Sprintf("--find-links=%s", tempPath)); err != nil {
 		s.Log.Debug("******Path val: %s", os.Getenv("PATH"))
 		return err
 	}
@@ -600,7 +596,7 @@ func (s *Supplier) RunPip() error {
 		return fmt.Errorf("could not check vendor existence: %v", err)
 	}
 
-	installArgs := []string{"install", "-r", requirementsPath, "--ignore-installed", "--exists-action=w", "--src=" + filepath.Join(s.Stager.DepDir(), "src")}
+	installArgs := []string{"-m", "pip", "install", "-r", requirementsPath, "--ignore-installed", "--no-warn-script-location", "--exists-action=w", "--src=" + filepath.Join(s.Stager.DepDir(), "src")}
 	var originalReqs []byte
 	if vendorExists {
 		installArgs = append(installArgs, "--no-index", "--find-links=file://"+filepath.Join(s.Stager.BuildDir(), "vendor"))
@@ -620,7 +616,7 @@ func (s *Supplier) RunPip() error {
 		}
 	}
 
-	if err := s.Command.Execute(s.Stager.BuildDir(), indentWriter(os.Stdout), indentWriter(os.Stderr), "pip", installArgs...); err != nil {
+	if err := s.Command.Execute(s.Stager.BuildDir(), indentWriter(os.Stdout), indentWriter(os.Stderr), "python", installArgs...); err != nil {
 		if vendorExists {
 			s.Log.Info("Running pip install without indexes failed. Not all dependencies were vendored. Trying again with indexes.")
 
@@ -628,7 +624,7 @@ func (s *Supplier) RunPip() error {
 				return fmt.Errorf("could not overwrite modified requirements file: %v", err)
 			}
 
-			if err = s.Command.Execute(s.Stager.BuildDir(), indentWriter(os.Stdout), indentWriter(os.Stderr), "pip", installArgs...); err != nil {
+			if err = s.Command.Execute(s.Stager.BuildDir(), indentWriter(os.Stdout), indentWriter(os.Stderr), "python", installArgs...); err != nil {
 				s.Log.Info("Running pip install failed. You need to include all dependencies in the vendor directory.")
 				return fmt.Errorf("could not run pip: %v", err)
 			}
