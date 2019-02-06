@@ -219,7 +219,7 @@ var _ = Describe("CF Python Buildpack", func() {
 	Context("cached buildpack", func() {
 		BeforeEach(func() {
 			if !cutlass.Cached {
-				Skip("Running cached tests")
+				Skip("Running uncached tests")
 			}
 		})
 

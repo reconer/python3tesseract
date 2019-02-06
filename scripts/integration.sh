@@ -20,4 +20,4 @@ BUILDPACK_FILE="$UNCACHED_BUILDPACK_FILE" \
 
 echo "Run Cached Buildpack"
 BUILDPACK_FILE="$CACHED_BUILDPACK_FILE" \
-  ginkgo -r -compilers=1 --flakeAttempts=$GINKGO_ATTEMPTS -nodes $GINKGO_NODES --slowSpecThreshold=60 -- --cached
+  ginkgo -v -r -compilers=1 --flakeAttempts=$GINKGO_ATTEMPTS -nodes $GINKGO_NODES --slowSpecThreshold=60 -- --cached

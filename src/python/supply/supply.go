@@ -573,10 +573,9 @@ func (s *Supplier) RunPip() error {
 	}
 
 	installArgs := []string{"-m", "pip", "install", "-r", requirementsPath, "--ignore-installed", "--exists-action=w", "--src=" + filepath.Join(s.Stager.DepDir(), "src")}
+	noIdxFindLinksFlags := []string{"--no-index", "--find-links=file://"+filepath.Join(s.Stager.BuildDir(), "vendor")}
 	var originalReqs []byte
 	if vendorExists {
-		installArgs = append(installArgs, "--no-index", "--find-links=file://"+filepath.Join(s.Stager.BuildDir(), "vendor"))
-
 		// Remove lines from requirements.txt that begin with -i
 		// because specifying index links here makes pip always want internet
 		// and pipenv generates requirements.txt with -i
@@ -584,6 +583,7 @@ func (s *Supplier) RunPip() error {
 		if err != nil {
 			return fmt.Errorf("could not read requirements.txt: %v", err)
 		}
+
 		re := regexp.MustCompile("(?m)^\\W*-i.*$")
 		modifiedReqs := re.ReplaceAll(originalReqs, []byte{})
 		err = ioutil.WriteFile(requirementsPath, modifiedReqs, 0644)
@@ -592,7 +592,7 @@ func (s *Supplier) RunPip() error {
 		}
 	}
 
-	if err := s.Command.Execute(s.Stager.BuildDir(), indentWriter(os.Stdout), indentWriter(os.Stderr), "python", installArgs...); err != nil {
+	if err := s.Command.Execute(s.Stager.BuildDir(), indentWriter(os.Stdout), indentWriter(os.Stderr), "python", append(installArgs, noIdxFindLinksFlags...)...); err != nil {
 		if vendorExists {
 			s.Log.Info("Running pip install without indexes failed. Not all dependencies were vendored. Trying again with indexes.")
 
