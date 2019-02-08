@@ -573,30 +573,32 @@ func (s *Supplier) RunPipUnvendored() error {
 		return nil
 	}
 
-	//// Search lines from requirements.txt that begin with -i, -index-url, or -extra-index-url
-	//// and add them to the pydistutils file.
-	//reqs, err := ioutil.ReadFile(requirementsPath)
-	//if err != nil {
-	//	return fmt.Errorf("could not read requirements.txt: %v", err)
-	//}
-	//
-	//distUtils := map[string][]string{}
-	//
-	//re := regexp.MustCompile(`(?m)^\W*(-i|-index-url)\s+(.*)$`)
-	//match := re.FindStringSubmatch(string(reqs))
-	//if len(match) > 0 {
-	//	distUtils["index_url"] = []string{match[len(match)-1]}
-	//}
-	//
-	//re = regexp.MustCompile(`(?m)^\W*-extra-index-url\s+(.*)$`)
-	//matches := re.FindAllStringSubmatch(string(reqs), -1)
-	//for _, m := range matches {
-	//	distUtils["find_links"] = append(distUtils["find_links"], m[len(m)-1])
-	//}
-	//
-	//if err := writePyDistUtils(distUtils); err != nil {
-	//	return err
-	//}
+	// Search lines from requirements.txt that begin with -i, -index-url, or -extra-index-url
+	// and add them to the pydistutils file. We do this so that easy_install will use
+	// the same indexes as pip. This may not actually be necessary because it's possible that
+	// easy_install has been fixed upstream, but it has no ill side-effects.
+	reqs, err := ioutil.ReadFile(requirementsPath)
+	if err != nil {
+		return fmt.Errorf("could not read requirements.txt: %v", err)
+	}
+
+	distUtils := map[string][]string{}
+
+	re := regexp.MustCompile(`(?m)^\s*(-i|-index-url)\s+(.*)$`)
+	match := re.FindStringSubmatch(string(reqs))
+	if len(match) > 0 {
+		distUtils["index_url"] = []string{match[len(match)-1]}
+	}
+
+	re = regexp.MustCompile(`(?m)^\s*-extra-index-url\s+(.*)$`)
+	matches := re.FindAllStringSubmatch(string(reqs), -1)
+	for _, m := range matches {
+		distUtils["find_links"] = append(distUtils["find_links"], m[len(m)-1])
+	}
+
+	if err := writePyDistUtils(distUtils); err != nil {
+		return err
+	}
 
 	installArgs := []string{"-m", "pip", "install", "-r", requirementsPath, "--ignore-installed", "--exists-action=w", "--src=" + filepath.Join(s.Stager.DepDir(), "src")}
 	if err := s.Command.Execute(s.Stager.BuildDir(), indentWriter(os.Stdout), indentWriter(os.Stderr), "python", installArgs...); err != nil {
@@ -636,14 +638,14 @@ func (s *Supplier) RunPipVendored() error {
 	}
 
 	// Remove lines from requirements.txt that begin with -i
-	// because specifying index links here makes pip always want internet
-	// and pipenv generates requirements.txt with -i
+	// because specifying index links here makes pip always want internet access,
+	// and pipenv generates requirements.txt with -i.
 	originalReqs, err := ioutil.ReadFile(requirementsPath)
 	if err != nil {
 		return fmt.Errorf("could not read requirements.txt: %v", err)
 	}
 
-	re := regexp.MustCompile("(?m)^\\W*-i.*$")
+	re := regexp.MustCompile(`(?m)^\s*-i.*$`)
 	modifiedReqs := re.ReplaceAll(originalReqs, []byte{})
 	err = ioutil.WriteFile(requirementsPath, modifiedReqs, 0644)
 	if err != nil {
